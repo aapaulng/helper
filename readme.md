@@ -7,6 +7,13 @@
 - modeimpute
 - print_cutoffpoint
 
+# Required Packages
+- `conda install -c anaconda ipywidgets`
+- matplotlib
+- seaborn
+- pandas
+- numpy
+
 # How to use
 1.  Put paul_helper.py in ur folder
 2. `from paul_helper import interactive_output`
