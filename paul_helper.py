@@ -20,13 +20,16 @@ def interactive_numerical_plot(df_X,df_Y):
     from ipywidgets import HBox,Checkbox,FloatRangeSlider,VBox,ToggleButton,interactive_output,Dropdown
     from IPython.display import display
 
-    def plot_num_and_save(xlimit,save_but,col,clip_limit):
+    def plot_num_and_save(xlimit,save_but,col,clip_box,clip_limit):
         nonlocal df_X, df_Y
         plt.close('all')
 
-        clip_df_X = df_X.copy()
-        clip_df_X.loc[clip_df_X[col]>clip_limit[1],col] = np.nan
-        clip_df_X.loc[clip_df_X[col]<clip_limit[0],col] = np.nan
+        if clip_box:
+            clip_df_X = df_X.copy()
+            clip_df_X.loc[clip_df_X[col]>clip_limit[1],col] = np.nan
+            clip_df_X.loc[clip_df_X[col]<clip_limit[0],col] = np.nan
+        else:
+            clip_df_X = df_X
 
 #         for i,col in zip(range(clip_df_X[col].shape[1]),clip_df_X[col]):
         fig,ax = plt.subplots(1,1,figsize=(10,5))
@@ -38,20 +41,26 @@ def interactive_numerical_plot(df_X,df_Y):
         if save_but:
             fig.savefig('./plots/{}.png'.format(clip_df_X[col].name), bbox_inches='tight')
 
-    xlimit = FloatRangeSlider(value = [clip_df_X.iloc[:,1].min(),clip_df_X.iloc[:,1].max()],min=clip_df_X.iloc[:,1].min(),
-                                              max=clip_df_X.iloc[:,1].max(),step=(clip_df_X.iloc[:,1].max()-clip_df_X.iloc[:,1].min())/100,
+    xlimit = FloatRangeSlider(value = [df_X.iloc[:,1].min(),df_X.iloc[:,1].max()],min=df_X.iloc[:,1].min(),
+                                              max=df_X.iloc[:,1].max(),step=(df_X.iloc[:,1].max()-df_X.iloc[:,1].min())/100,
                                               continuous_update=False,description='X_limit')
     save_but = ToggleButton(description='Save Figure')
-    col = Dropdown(options=clip_df_X.columns)
+    col = Dropdown(options=df_X.columns)
+    clip_box = Checkbox(value=False,description='Clip ?')
+    clip_limit = FloatRangeSlider(value = [df_X.iloc[:,1].min(),df_X.iloc[:,1].max()],min=df_X.iloc[:,1].min(),
+                                              max=df_X.iloc[:,1].max(),step=(df_X.iloc[:,1].max()-df_X.iloc[:,1].min())/100,
+                                              continuous_update=False,description='X_limit')
+
 
     out = interactive_output(plot_num_and_save,{
                     'xlimit' : xlimit,
                     'save_but':save_but,
                      'col' : col,
+                     'clip_box':clip_box,
                      'clip_limit':clip_limit
                      })
 #     save_but = Button(description='Save Fig')
-    vbox1 = VBox([xlimit,save_but,col,clip_limit])
+    vbox1 = VBox([xlimit,save_but,col,clip_box,clip_limit])
     ui = HBox([vbox1,out])
     display(ui)
 
@@ -59,15 +68,15 @@ def interactive_numerical_plot(df_X,df_Y):
         change['owner'].value = False
 
     def on_click_case(change):
-        xlimit.min = clip_df_X[change['new']].min()
-        xlimit.max = clip_df_X[change['new']].max()
-        xlimit.step = (clip_df_X[change['new']].max() - clip_df_X[change['new']].min())/100
-        xlimit.value = [clip_df_X[change['new']].min(),clip_df_X[change['new']].max()]
-        clip_limit.min = clip_df_X[change['new']].min()
-        clip_limit.min = clip_df_X[change['new']].min()
-        clip_limit.max = clip_df_X[change['new']].max()
-        clip_limit.step = (clip_df_X[change['new']].max() - clip_df_X[change['new']].min())/100
-        clip_limit.value = [clip_df_X[change['new']].min(),clip_df_X[change['new']].max()]
+        xlimit.min = df_X[change['new']].min()
+        xlimit.max = df_X[change['new']].max()
+        xlimit.step = (df_X[change['new']].max() - df_X[change['new']].min())/100
+        xlimit.value = [df_X[change['new']].min(),df_X[change['new']].max()]
+        clip_limit.min = df_X[change['new']].min()
+        clip_limit.min = df_X[change['new']].min()
+        clip_limit.max = df_X[change['new']].max()
+        clip_limit.step = (df_X[change['new']].max() - df_X[change['new']].min())/100
+        clip_limit.value = [df_X[change['new']].min(),df_X[change['new']].max()]
 
     save_but.observe(on_click, 'value')
     col.observe(on_click_case, 'value')
@@ -305,3 +314,14 @@ def print_cutoffpoint(clf,X_train,y_train,X_test,Y_test,cutoffs=[0.1,1.0,0.1]):
             print('test  set  f1_score {:.2f}'.format(f1_score(y_test,[1 if x >cutoff else 0 for x in clf.predict_proba(X_test)[:,1]])))
             test_lift = lift_score(y_test,[1 if x >cutoff else 0 for x in clf.predict_proba(X_test)[:,1]])
             print('test lift {:.2f}'.format(test_lift))
+
+def chi2_remove_categorical(df_cat,df_Y):
+    from scipy.stats import chi2_contingency
+    for cname in df_cat:
+        chi2, p, dof, ex = chi2_contingency(pd.crosstab(df_Y,df_cat[cname]))
+
+        if p < 0.05:
+            print('drop {}, pvalue = {}'.format(cname,p))
+            df_cat.drop(cname,axis=1,inplace=True)
+
+    return df_cat
