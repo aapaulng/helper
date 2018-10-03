@@ -325,3 +325,37 @@ def chi2_remove_categorical(df_cat,df_Y):
             df_cat.drop(cname,axis=1,inplace=True)
 
     return df_cat
+
+
+def model_results(clf,y,X):
+    """Print Confusion Matrix, ROC_AUC, Lift and etc.
+
+    Parameters
+    ----------
+    clf : Classifier
+        Model
+    y : DataFrame/np Array
+    X : DataFrame/np Array
+
+    Returns
+    -------
+    None
+
+    """
+
+    from sklearn.metrics import confusion_matrix,roc_auc_score
+    tn,fp,fn,tp= confusion_matrix(y,clf.predict(X)).flatten()
+    print(clf.__class__)
+    print()
+    print(" n={:^6}   |     Prediction           ".format(tp+tn+fp+fn))
+    print("____________|____0__________1___       ")
+    print("            |   TN     |    FP                TNR/Spec\t\t"+ "Ratio of FP/TP = {:.2f}".format(fp/tp))
+    print("        0   |  {:^6}  |  {:^6}    {:^6}    {:^6}%\t\t".format(tn, fp, tn+fp,round(tn/(tn+fp)*100, 2))+"Prevelance = {:.2f}%".format((fn+tp)/(fn+tp+fp+tn)*100))
+    print("Actual      |__________|_________      \t\t\t\t"+"Accuracy = {:.2f}%".format((tn+tp)/(tn+tp+fn+fp)*100))
+    print("            |   FN     |    TP                TPR/Sen/Recall\t"+"ROC AUC Score = {:.2f}".format(roc_auc_score(y,clf.predict_proba(X)[:,1])))
+    print("        1   |  {:^6}  |  {:^6}    {:^6}    {:^6}%\t\t".format(fn, tp, fn+tp,round(tp/(tp+fn)*100,2))+"Lift = %.2f" % (tp/(tp+fp)/(tp+fn)*(tp+tn+fp+fn)))
+    print("            |          |               ")
+    print("               {:^6}    {:^6}          ".format(tn+fn, fp+tp))
+    print()
+    print("                NPV       PPV,Preci")
+    print("               {:^6}%    {:^6}%".format(round(tn/(tn+fn)*100,2),round(tp/(tp+fp)*100,2)))
