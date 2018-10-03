@@ -327,7 +327,7 @@ def chi2_remove_categorical(df_cat,df_Y):
     return df_cat
 
 
-def model_results(clf,y,X):
+def model_result(clf,y,X):
     """Print Confusion Matrix, ROC_AUC, Lift and etc.
 
     Parameters

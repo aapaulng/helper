@@ -6,6 +6,8 @@
 - medianimpute
 - modeimpute
 - print_cutoffpoint
+- chi2_remove_categorical
+- model_results
 
 # Required Packages
 - `conda install -c anaconda ipywidgets`
@@ -13,6 +15,8 @@
 - seaborn
 - pandas
 - numpy
+- sklearn
+- scipy
 
 # How to use
 1.  Put paul_helper.py in ur folder
