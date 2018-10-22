@@ -3,6 +3,9 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 
+def printmd(string):
+    from IPython.display import Markdown, display
+    display(Markdown(string))
 
 def interactive_numerical_plot(df_X,df_Y):
     """Plot Interactive KDE graph. Allow user to choose variable, set xlim and save figure. df_Y only allow binary class
@@ -270,7 +273,41 @@ def modeimpute(df_X):
         df_X[col].fillna(df_X[col].mode()[0],inplace=True)
     return df_X
 
-def print_cutoffpoint(clf,X_train,y_train,X_test,Y_test,cutoffs=[0.1,1.0,0.1]):
+def model_result(clf,y,X,cutoff=0.5):
+    """Print Confusion Matrix, ROC_AUC, Lift and etc.
+
+    Parameters
+    ----------
+    clf : Classifier
+        Model
+    y : DataFrame/np Array
+    X : DataFrame/np Array
+
+    Returns
+    -------
+    None
+
+    """
+
+    from sklearn.metrics import confusion_matrix,roc_auc_score
+    # tn,fp,fn,tp= confusion_matrix(y,clf.predict(X)).flatten()
+    tn,fp,fn,tp= confusion_matrix(y,[1 if i>= cutoff else 0 for i in clf.predict_proba(X)[:,1]]).flatten()
+    print(clf.__class__)
+    print()
+    print(" n={:^6}   |     Prediction           ".format(tp+tn+fp+fn))
+    print("____________|____0__________1___       ")
+    print("            |   TN     |    FP                TNR/Spec\t\t"+ "Ratio of FP/TP = {:.2f}".format(fp/tp))
+    print("        0   |  {:^6}  |  {:^6}    {:^6}    {:^6}%\t\t".format(tn, fp, tn+fp,round(tn/(tn+fp)*100, 2))+"Prevelance = {:.2f}%".format((fn+tp)/(fn+tp+fp+tn)*100))
+    print("Actual      |__________|_________      \t\t\t\t"+"Accuracy = {:.2f}%".format((tn+tp)/(tn+tp+fn+fp)*100))
+    print("            |   FN     |    TP                TPR/Sen/Recall\t"+"ROC AUC Score = {:.2f}".format(roc_auc_score(y,clf.predict_proba(X)[:,1])))
+    print("        1   |  {:^6}  |  {:^6}    {:^6}    {:^6}%\t\t".format(fn, tp, fn+tp,round(tp/(tp+fn)*100,2))+"Lift = %.2f" % (tp/(tp+fp)/(tp+fn)*(tp+tn+fp+fn)))
+    print("            |          |               ")
+    print("               {:^6}    {:^6}          ".format(tn+fn, fp+tp))
+    print()
+    print("                NPV       PPV,Preci")
+    print("               {:^6}%    {:^6}%".format(round(tn/(tn+fn)*100,2),round(tp/(tp+fp)*100,2)))
+
+def print_cutoffpoint(clf,X_train,y_train,X_test=None,Y_test=None,cutoffs=[0.1,1.0,0.1]):
     """Print Confusion Matrix for different cut off point.
 
     Parameters
@@ -290,31 +327,15 @@ def print_cutoffpoint(clf,X_train,y_train,X_test,Y_test,cutoffs=[0.1,1.0,0.1]):
 
     """
     plot_df = pd.DataFrame(columns=['cutoff','train_lift','test_lift'])
-    for cutoff in range(cutoffs):
-        if X_train and y_train:
-            plt.title('{:.2f} train'.format(cutoff))
-            cm = confusion_matrix(y_train,[1 if x> cutoff else 0 for x in clf.predict_proba(X_train)[:,1]])
-            # cm = confusion_matrix(y_train,cutoff_predict(clf,X_train,threshold))
-            sns.heatmap(cm,annot=True,fmt='d')
-            plt.show()
+    for cutoff in np.arange(cutoffs[0],cutoffs[1],cutoffs[2]):
+        if X_train is not None and y_train is not None:
+            printmd("<span style='color:red'>train, cutoff = **{}**</span>".format(round(cutoff,2)))
+            model_result(clf,y_train,X_train,cutoff=cutoff)
 
-            print('train set roc_auc_score {:.2f}'.format(roc_auc_score(y_train,clf.predict_proba(X_train)[:,1])))
-            print('train set  f1_score {:.2f}'.format(f1_score(y_train.reshape(-1,1),[1 if x >cutoff else 0 for x in clf.predict_proba(X_train)[:,1]])))
-            train_lift = lift_score(y_train,[1 if x >cutoff else 0 for x in clf.predict_proba(X_train)[:,1]])
-            print('train lift {:.2f}'.format(train_lift))
-
-        if X_test and y_test:
-            plt.title('{:.2f} test'.format(cutoff))
-            cm2 = confusion_matrix(y_test,[1 if x >cutoff else 0 for x in  clf.predict_proba(X_test)[:,1]])
-            # cm2 = confusion_matrix(y_test,cutoff_predict(clf,X_test,threshold))
-            sns.heatmap(cm2,annot=True,fmt='d')
-            plt.show()
-
-            print('test  set  roc_auc_score {:.2f}'.format(roc_auc_score(y_test,clf.predict_proba(X_test)[:,1])))
-            print('test  set  f1_score {:.2f}'.format(f1_score(y_test,[1 if x >cutoff else 0 for x in clf.predict_proba(X_test)[:,1]])))
-            test_lift = lift_score(y_test,[1 if x >cutoff else 0 for x in clf.predict_proba(X_test)[:,1]])
-            print('test lift {:.2f}'.format(test_lift))
-
+        if X_test is not None  and y_test is not None :
+            printmd("<span style='color:green'>train, cutoff = **{}**</span>".format(round(cutoff,2)))
+            model_result(clf,y_test,X_test,cutoff=cutoff)
+            
 def chi2_remove_categorical(df_cat,df_Y):
     """Dummify df_cat and use scipy chi2_constigency test to select data with pvalue < 0.05
 
@@ -368,41 +389,6 @@ def chi2_remove_categorical_v2(df_cat,y):
     print(df)
 
     return cat_dum[df['columns']]
-
-
-def model_result(clf,y,X):
-    """Print Confusion Matrix, ROC_AUC, Lift and etc.
-
-    Parameters
-    ----------
-    clf : Classifier
-        Model
-    y : DataFrame/np Array
-    X : DataFrame/np Array
-
-    Returns
-    -------
-    None
-
-    """
-
-    from sklearn.metrics import confusion_matrix,roc_auc_score
-    tn,fp,fn,tp= confusion_matrix(y,clf.predict(X)).flatten()
-    print(clf.__class__)
-    print()
-    print(" n={:^6}   |     Prediction           ".format(tp+tn+fp+fn))
-    print("____________|____0__________1___       ")
-    print("            |   TN     |    FP                TNR/Spec\t\t"+ "Ratio of FP/TP = {:.2f}".format(fp/tp))
-    print("        0   |  {:^6}  |  {:^6}    {:^6}    {:^6}%\t\t".format(tn, fp, tn+fp,round(tn/(tn+fp)*100, 2))+"Prevelance = {:.2f}%".format((fn+tp)/(fn+tp+fp+tn)*100))
-    print("Actual      |__________|_________      \t\t\t\t"+"Accuracy = {:.2f}%".format((tn+tp)/(tn+tp+fn+fp)*100))
-    print("            |   FN     |    TP                TPR/Sen/Recall\t"+"ROC AUC Score = {:.2f}".format(roc_auc_score(y,clf.predict_proba(X)[:,1])))
-    print("        1   |  {:^6}  |  {:^6}    {:^6}    {:^6}%\t\t".format(fn, tp, fn+tp,round(tp/(tp+fn)*100,2))+"Lift = %.2f" % (tp/(tp+fp)/(tp+fn)*(tp+tn+fp+fn)))
-    print("            |          |               ")
-    print("               {:^6}    {:^6}          ".format(tn+fn, fp+tp))
-    print()
-    print("                NPV       PPV,Preci")
-    print("               {:^6}%    {:^6}%".format(round(tn/(tn+fn)*100,2),round(tp/(tp+fp)*100,2)))
-
 
 def show_correlation(df_X):
     """Correlation Heatmap
