@@ -45,7 +45,7 @@ def interactive_numerical_plot(df_X,df_Y):
                                               max=df_X.iloc[:,1].max(),step=(df_X.iloc[:,1].max()-df_X.iloc[:,1].min())/100,
                                               continuous_update=False,description='X_limit')
     save_but = ToggleButton(description='Save Figure')
-    col = Dropdown(options=df_X.columns)
+    col = Dropdown(options=df_X.columns.tolist())
     clip_box = Checkbox(value=False,description='Clip ?')
     clip_limit = FloatRangeSlider(value = [df_X.iloc[:,1].min(),df_X.iloc[:,1].max()],min=df_X.iloc[:,1].min(),
                                               max=df_X.iloc[:,1].max(),step=(df_X.iloc[:,1].max()-df_X.iloc[:,1].min())/100,
@@ -316,15 +316,58 @@ def print_cutoffpoint(clf,X_train,y_train,X_test,Y_test,cutoffs=[0.1,1.0,0.1]):
             print('test lift {:.2f}'.format(test_lift))
 
 def chi2_remove_categorical(df_cat,df_Y):
+    """Dummify df_cat and use scipy chi2_constigency test to select data with pvalue < 0.05
+
+    Parameters
+    ----------
+    df_cat : DataFrame
+        Do not put dummified dataframe
+    df_Y : DataFrame
+
+    Returns
+    -------
+    DataFrame
+        Output
+
+    """
     from scipy.stats import chi2_contingency
-    for cname in df_cat:
-        chi2, p, dof, ex = chi2_contingency(pd.crosstab(df_Y,df_cat[cname]))
+    cat_dum = pd.get_dummies(df_cat)
+    for cname in cat_dum:
+        chi2, p, dof, ex = chi2_contingency(pd.crosstab(df_Y,cat_dum[cname]))
 
-        if p < 0.05:
+        if p >= 0.05:
             print('drop {}, pvalue = {}'.format(cname,p))
-            df_cat.drop(cname,axis=1,inplace=True)
+            cat_dum.drop(cname,axis=1,inplace=True)
 
-    return df_cat
+    return cat_dum
+
+def chi2_remove_categorical_v2(df_cat,y):
+    """Dummify df_cat and use sklearn chi2 test to select data with pvalue < 0.05. Faster approach compare to version_1
+
+    Parameters
+    ----------
+    df_cat : DataFrame
+        Do not put dummified dataframe
+    df_Y : DataFrame
+
+    Returns
+    -------
+    DataFrame
+        Output
+
+    """
+    from sklearn.feature_selection import chi2, SelectKBest
+
+    cat_dum = pd.get_dummies(df_cat)
+    chi2_selector = SelectKBest(chi2,k=1)
+    chi2_selector.fit(cat_dum,y)
+    df = pd.DataFrame(list(zip(cat_dum.columns,chi2_selector.scores_,chi2_selector.pvalues_)),
+                     columns = ['columns','scores','p_value'])
+    df = df[df['p_value']<0.05].sort_values(by='p_value')
+
+    print(df)
+
+    return cat_dum[df['columns']]
 
 
 def model_result(clf,y,X):
@@ -359,3 +402,29 @@ def model_result(clf,y,X):
     print()
     print("                NPV       PPV,Preci")
     print("               {:^6}%    {:^6}%".format(round(tn/(tn+fn)*100,2),round(tp/(tp+fp)*100,2)))
+
+
+def show_correlation(df_X):
+    """Correlation Heatmap
+
+    Parameters
+    ----------
+    df_X : DataFrame
+
+    Returns
+    -------
+        null
+    """
+    trimask = np.zeros_like(df_X.corr(), dtype=np.bool)
+    trimask[np.triu_indices_from(trimask)]=True
+
+    plt.style.use('seaborn-whitegrid')
+    plt.figure(figsize=(50, 50), dpi=200)
+    sns.heatmap(df_X.corr(method='pearson'),
+                square=True,
+                vmin=min(df_X.corr(method='pearson').values.flatten()),
+                vmax=max(df_X.corr(method='pearson').values.flatten()),
+                cmap=sns.color_palette("RdBu", 100),
+                mask=trimask,
+                annot=True,
+                cbar=False)
