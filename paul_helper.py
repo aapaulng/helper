@@ -429,3 +429,18 @@ def categorical_distplot(df_cat,y):
         a.plot(kind='bar',figsize=(16,6))
         plt.title(col)
         plt.show()
+
+def tree_max_depth(rf_clf):
+    """When fitting Random Forest with Max Depth = None. It allows the tree to grow on its on. Now we want to see how deep each tree/estimator actually grow.
+
+    Parameters
+    ----------
+    rf_clf : RandomForest Classifier
+
+    Returns
+    -------
+    list
+        List contains the depth of each tree
+
+    """
+    return [est.tree_.max_depth for est in rf_clf.estimators_]
