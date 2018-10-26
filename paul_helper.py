@@ -71,13 +71,20 @@ def interactive_numerical_plot(df_num,df_Y):
         change['owner'].value = False
 
     def on_click_case(change):
-        xlimit.min = df_num[change['new']].min()
-        xlimit.max = df_num[change['new']].max()
+        try:
+            xlimit.min = df_num[change['new']].min()
+            xlimit.max = df_num[change['new']].max()
+            clip_limit.min = df_num[change['new']].min()
+            clip_limit.max = df_num[change['new']].max()
+
+        except:
+            xlimit.max = df_num[change['new']].max()
+            xlimit.min = df_num[change['new']].min()
+            clip_limit.max = df_num[change['new']].max()
+            clip_limit.min = df_num[change['new']].min()
+
         xlimit.step = (df_num[change['new']].max() - df_num[change['new']].min())/100
         xlimit.value = [df_num[change['new']].min(),df_num[change['new']].max()]
-        clip_limit.min = df_num[change['new']].min()
-        clip_limit.min = df_num[change['new']].min()
-        clip_limit.max = df_num[change['new']].max()
         clip_limit.step = (df_num[change['new']].max() - df_num[change['new']].min())/100
         clip_limit.value = [df_num[change['new']].min(),df_num[change['new']].max()]
 
