@@ -212,7 +212,7 @@ def drop_numerical_50percent_zero(df_num,df_Y):
                 class_0_vc = ct_df_num[0][0]/sum(ct_df_num[0])
                 class_1_vc = ct_df_num[1][0]/sum(ct_df_num[1])
                 if abs(int(class_0_vc*100) - int(class_1_vc*100)) < 5:
-                    print('Drop {} with {:.2f}% zeroes, class0 {:.2f}% zeroes, class1 {:.2f}% zeroes'.format(col,foo*100,class_0_vc*100,class_1_vc))
+                    print('Drop {} with {:.2f}% zeroes, class0 {:.2f}% zeroes, class1 {:.2f}% zeroes'.format(col,foo*100,class_0_vc*100,class_1_vc*100))
                     df_num.drop(col,axis=1,inplace=True)
                     continue
         bar = df_num[col].value_counts().max() / sum(df_num[col].value_counts())
@@ -451,3 +451,57 @@ def tree_max_depth(rf_clf):
 
     """
     return [est.tree_.max_depth for est in rf_clf.estimators_]
+
+def scatter_matrix(df_num):
+    """scatter_matrix. Plot a Graph
+
+    Parameters
+    ----------
+    df_num : Can throw in cat & num, but only num will be process
+    """
+    pd.tools.plotting.scatter_matrix(df_num)
+
+def parallel_coordinates(df_num,Y):
+    """Use to see which variable can be used to distinct different classes.
+    Plot multiple graph where each graph contains 10 numerical variable
+    
+    Parameters
+    ----------
+    df_num : Can throw in cat & num, but only num will be process
+    """
+    for i in np.arange(int(np.ceil(len(df_num)/10))):
+        if i == int(np.ceil(len(df_num)/10)):
+            df_temp = pd.concat([df_num.iloc[:,i*10:],Y],axis=1)
+        else:
+            df_temp = pd.concat([df_num.iloc[:,i*10:i*10+10],Y],axis=1)
+
+        plt.figure(figsize=(15,5))
+        pd.tools.plotting.parallel_coordinates(df_temp,Y.name,color=['r','g','b'])
+        plt.xticks(rotation=90)
+        plt.show()
+
+class pyviz:
+    import holoviews as hv
+    hv.extension('bokeh')
+
+    @staticmethod
+    def correlation_heatmap(num_df,figsize=(800,600)):
+        """Correlation Heat Map
+        Parameters
+        ----------
+        num_df : Numerical df
+        figsize : tuple
+            Ex. (width,height)
+
+        Returns
+        -------
+        Holoview Object
+            Return hv object that will be printed out
+
+        """
+        num_corr = num_df.corr()
+        num_corr = pd.DataFrame(np.triu(num_corr),index=num_corr.index,columns=num_corr.columns)
+        num_corr = pd.melt(num_corr.reset_index(),'index').rename(columns={'index':'x','variable':'y'})
+        plot = hv.HeatMap(num_corr,['x','y'],'value')
+        plot = plot.opts(plot={'width': figsize[0] ,'height':figsize[1],'xrotation':90,'tools':['hover'],'colorbar':True})
+        return plot
