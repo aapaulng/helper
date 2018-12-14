@@ -464,7 +464,7 @@ def scatter_matrix(df_num):
 def parallel_coordinates(df_num,Y):
     """Use to see which variable can be used to distinct different classes.
     Plot multiple graph where each graph contains 10 numerical variable
-    
+
     Parameters
     ----------
     df_num : Can throw in cat & num, but only num will be process
@@ -479,6 +479,111 @@ def parallel_coordinates(df_num,Y):
         pd.tools.plotting.parallel_coordinates(df_temp,Y.name,color=['r','g','b'])
         plt.xticks(rotation=90)
         plt.show()
+
+def auc_roc_interactive(clf,df_Y,df_X):
+    """Interactive auc roc plot. Remember to use %matplotlib notebook
+
+    Parameters
+    ----------
+    clf : classifier
+    df_Y : Y
+    df_X : X
+    
+    """
+    plt.figure(figsize=(10,8))
+    ax3 = plt.subplot(2,1,1)
+    cutoff=0.5
+    y_predict_proba = clf.predict_proba(df_X)[:,1]
+    fpr, tpr, thresholds  = roc_curve(df_Y,y_predict_proba)
+    roc_df = pd.DataFrame({'fpr':fpr,'tpr':tpr,'threshold':thresholds})
+    roc_auc = auc(fpr, tpr)
+
+    tn,fp,fn,tp= confusion_matrix(df_Y,[1 if i>= cutoff else 0 for i in y_predict_proba]).flatten()
+    text = " n={:^6}   |     Prediction           \n".format(tp+tn+fp+fn)
+    text+= "_____|____0__________1___       \n"
+    text+="            |   TN     |    FP                TNR/Spec    \n"
+    text+="        0   |  {:^6}  |  {:^6}    {:^6}    {:^6}%    \n".format(tn, fp, tn+fp,round(tn/(tn+fp)*100, 2))
+    text+="Actual      |__________|_________              \n"
+    text+="            |   FN     |    TP                TPR/Sen/Recall  \n"
+    text+="        1   |  {:^6}  |  {:^6}    {:^6}    {:^6}%    \n".format(fn, tp, fn+tp,round(tp/(tp+fn)*100,2))
+    text+="            |          |               \n"
+    text+="               {:^6}    {:^6}          \n".format(tn+fn, fp+tp)
+    text+="                NPV       PPV,Preci\n"
+    text+="               {:^6}%    {:^6}%\n\n".format(round(tn/(tn+fn)*100,2),round(tp/(tp+fp)*100,2))
+    text+="Ratio of FP/TP = {:.2f}\n".format(fp/tp)
+    text+="Prevelance = {:.2f}%\n".format((fn+tp)/(fn+tp+fp+tn)*100)
+    text+="Accuracy = {:.2f}%\n".format((tn+tp)/(tn+tp+fn+fp)*100)
+    text+="ROC AUC Score = {:.2f}\n".format(roc_auc)
+    text+="Lift = %.2f\n" % (tp/(tp+fp)/(tp+fn)*(tp+tn+fp+fn))
+    plt.text(0.5,0.1,text,fontsize='x-small')
+
+    ax1 = plt.subplot(2,2,3)
+    sns.distplot(y_predict_proba[df_Y==0],label='0',ax=ax1)
+    sns.distplot(y_predict_proba[df_Y==1],label='1',ax=ax1)
+    plt.axvline(0)
+    plt.legend()
+
+    ax2 = plt.subplot(2,2,4)
+    lw = 2
+    plt.plot(fpr, tpr, color='darkorange',
+             lw=lw, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+    n_fpr, n_tpr,n_thres = roc_df.iloc[abs(roc_df['threshold']-0.5).argmin()]
+    plt.plot(n_fpr,n_tpr,'o',color='blue')
+    plt.xlim([-0.02, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC curve')
+    plt.legend(loc="lower right")
+    plt.tight_layout
+
+
+    def onclick(event):
+        plt.clf()
+        ax3 = plt.subplot(2,1,1)
+        n_fpr, n_tpr,n_thres = roc_df.iloc[abs(roc_df['threshold']-event.xdata).argmin()]
+        tn,fp,fn,tp= confusion_matrix(df_Y,[1 if i>= n_thres else 0 for i in y_predict_proba]).flatten()
+        text = " n={:^6}   |     Prediction           \n".format(tp+tn+fp+fn)
+        text+= "_____|____0__________1___       \n"
+        text+="            |   TN     |    FP                TNR/Spec    \n"
+        text+="        0   |  {:^6}  |  {:^6}    {:^6}    {:^6}%    \n".format(tn, fp, tn+fp,round(tn/(tn+fp)*100, 2))
+        text+="Actual      |__________|_________              \n"
+        text+="            |   FN     |    TP                TPR/Sen/Recall  \n"
+        text+="        1   |  {:^6}  |  {:^6}    {:^6}    {:^6}%    \n".format(fn, tp, fn+tp,round(tp/(tp+fn)*100,2))
+        text+="            |          |               \n"
+        text+="               {:^6}    {:^6}          \n".format(tn+fn, fp+tp)
+        text+="                NPV       PPV,Preci\n"
+        text+="               {:^6}%    {:^6}%\n\n".format(round(tn/(tn+fn)*100,2),round(tp/(tp+fp)*100,2))
+        text+="Ratio of FP/TP = {:.2f}\n".format(fp/tp)
+        text+="Prevelance = {:.2f}%\n".format((fn+tp)/(fn+tp+fp+tn)*100)
+        text+="Accuracy = {:.2f}%\n".format((tn+tp)/(tn+tp+fn+fp)*100)
+        text+="ROC AUC Score = {:.2f}\n".format(roc_auc)
+        text+="Lift = %.2f\n" % (tp/(tp+fp)/(tp+fn)*(tp+tn+fp+fn))
+        plt.text(0.5,0.1,text,fontsize='x-small')
+
+        ax1 = plt.subplot(2,2,3)
+        sns.distplot(y_predict_proba[df_Y==0],label='0',ax=ax1)
+        sns.distplot(y_predict_proba[df_Y==1],label='1',ax=ax1)
+        plt.axvline(event.xdata)
+        plt.legend()
+
+        ax2 = plt.subplot(2,2,4)
+        plt.plot(fpr, tpr, color='darkorange',
+             lw=lw, label='ROC curve (area = %0.2f)' % roc_auc)
+        plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+        plt.xlim([-0.02, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.plot(n_fpr,n_tpr,'o',color='blue')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC curve')
+        plt.legend(loc="lower right")
+        plt.gca().set_title('threshold = {:.2f}'.format(n_thres))
+        plt.tight_layout
+
+    # tell mpl_connect we want to pass a 'button_press_event' into onclick when the event is detected
+    plt.gcf().canvas.mpl_connect('button_press_event', onclick)
 
 class pyviz:
     import holoviews as hv
