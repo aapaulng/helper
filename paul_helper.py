@@ -488,8 +488,10 @@ def auc_roc_interactive(clf,df_Y,df_X):
     clf : classifier
     df_Y : Y
     df_X : X
-    
+
     """
+    from sklearn.metrics import roc_curve,auc,confusion_matrix
+
     plt.figure(figsize=(10,8))
     ax3 = plt.subplot(2,1,1)
     cutoff=0.5
