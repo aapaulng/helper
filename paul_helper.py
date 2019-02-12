@@ -314,6 +314,33 @@ def model_result(clf,y,X,cutoff=0.5):
     print("                NPV       PPV,Preci")
     print("               {:^6}%    {:^6}%".format(round(tn/(tn+fn)*100,2),round(tp/(tp+fp)*100,2)))
 
+def strip_model_result(y_true,y_predict,y_score):
+    """Print Confusion Matrix, ROC_AUC, Lift and etc.
+    Parameters
+    ----------
+    y_true : DataFrame/np Array
+    y_predict : DataFrame/np Array
+    y_score : DataFrame/np Array
+    Returns
+    -------
+    None
+    """
+
+    from sklearn.metrics import confusion_matrix,roc_auc_score
+    tn,fp,fn,tp = confusion_matrix(y_true,y_predict).flatten()
+    print(" n={:^6}   |     Prediction           ".format(tp+tn+fp+fn))
+    print("____________|____0__________1___       ")
+    print("            |   TN     |    FP                TNR/Spec\t\t"+ "Ratio of FP/TP = {:.2f}".format(fp/tp))
+    print("        0   |  {:^6}  |  {:^6}    {:^6}    {:^6}%\t\t".format(tn, fp, tn+fp,round(tn/(tn+fp)*100, 2))+"Prevelance = {:.2f}%".format((fn+tp)/(fn+tp+fp+tn)*100))
+    print("Actual      |__________|_________      \t\t\t\t"+"Accuracy = {:.2f}%".format((tn+tp)/(tn+tp+fn+fp)*100))
+    print("            |   FN     |    TP                TPR/Sen/Recall\t"+"ROC AUC Score = {:.2f}".format(roc_auc_score(y_true,y_score)))
+    print("        1   |  {:^6}  |  {:^6}    {:^6}    {:^6}%\t\t".format(fn, tp, fn+tp,round(tp/(tp+fn)*100,2))+"Lift = %.2f" % (tp/(tp+fp)/(tp+fn)*(tp+tn+fp+fn)))
+    print("            |          |               ")
+    print("               {:^6}    {:^6}          ".format(tn+fn, fp+tp))
+    print()
+    print("                NPV       PPV,Preci")
+    print("               {:^6}%    {:^6}%".format(round(tn/(tn+fn)*100,2),round(tp/(tp+fp)*100,2)))
+    
 def print_cutoffpoint(clf,X_train,y_train,X_test=None,Y_test=None,cutoffs=[0.1,1.0,0.1]):
     """Print Confusion Matrix for different cut off point.
 
