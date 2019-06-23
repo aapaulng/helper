@@ -282,32 +282,75 @@ def modeimpute(df_cat):
 
 def model_result(clf,y,X,cutoff=0.5):
     """Print Confusion Matrix, ROC_AUC, Lift and etc.
-
     Parameters
     ----------
     clf : Classifier
         Model
     y : DataFrame/np Array
     X : DataFrame/np Array
-
+    cutoff : double or 'best'. Default = 0.5
+        If 'best', find cutoff/threshold where true positive rate is high and the false positive rate is low.
     Returns
     -------
     None
-
     """
+    from sklearn.metrics import confusion_matrix,roc_auc_score,roc_curve
 
-    from sklearn.metrics import confusion_matrix,roc_auc_score
-    # tn,fp,fn,tp= confusion_matrix(y,clf.predict(X)).flatten()
-    tn,fp,fn,tp= confusion_matrix(y,[1 if i>= cutoff else 0 for i in clf.predict_proba(X)[:,1]]).flatten()
+    y_score = clf.predict_proba(X)[:,1]
+
+    if str(cutoff) == 'best':
+        fpr, tpr, threshold = roc_curve(y, y_score)
+        i = np.arange(len(tpr))
+        roc = pd.DataFrame({'tf' : pd.Series(tpr-(1-fpr), index=i), 'threshold' : pd.Series(threshold, index=i)})
+        roc_t = roc.loc[(roc.tf-0).abs().argsort()[:5]]
+        cutoff = list(roc_t['threshold'])[0]
+        print("top5 cutoff: ", list(roc_t['threshold']))
+
+    # tn,fp,fn,tp= confusion_matrix(y,clf.predict(X)).flatten() #[1 if i>= cutoff else 0 for i in y_score]
+    tn,fp,fn,tp= confusion_matrix(y,np.where(y_score>=cutoff,1,0)).flatten()
     print(clf.__class__)
     print()
-    print("n={:^7}   |     cutoff={:^4}".format(tp+tn+fp+fn,cutoff))
+    print("n={:^7}   |     cutoff={:.2f}".format(tp+tn+fp+fn,cutoff))
     print("            |     Prediction")
     print("____________|____0__________1___       ")
     print("            |   TN     |    FP                TNR/Spec\t\t"+ "Ratio of FP/TP = {:.2f}".format(fp/tp))
     print("        0   | {:^7}  | {:^7}    {:^7}   {:^7}%\t\t".format(tn, fp, tn+fp,round(tn/(tn+fp)*100, 2))+"Prevelance = {:.2f}%".format((fn+tp)/(fn+tp+fp+tn)*100))
     print("Actual      |__________|_________      \t\t\t\t"+"Accuracy = {:.2f}%".format((tn+tp)/(tn+tp+fn+fp)*100))
-    print("            |   FN     |    TP                TPR/Sen/Recall\t"+"ROC AUC Score = {:.2f}".format(roc_auc_score(y,clf.predict_proba(X)[:,1])))
+    print("            |   FN     |    TP                TPR/Sen/Recall\t"+"ROC AUC Score = {:.2f}".format(roc_auc_score(y,y_score)))
+    print("        1   | {:^7}  | {:^7}   {:^7}   {:^7}%\t\t".format(fn, tp, fn+tp,round(tp/(tp+fn)*100,2))+"Lift = %.2f" % (tp/(tp+fp)/(tp+fn)*(tp+tn+fp+fn)))
+    print("            |          |               ")
+    print("              {:^7}   {:^7}          ".format(tn+fn, fp+tp))
+    print()
+    print("                NPV       PPV,Preci")
+    print("              {:^7}%   {:^7}%".format(round(tn/(tn+fn)*100,2),round(tp/(tp+fp)*100,2)))
+
+def model_result_top_n(clf,y,X,top_n):
+    """Print Confusion Matrix, ROC_AUC, Lift and etc.
+    Parameters
+    ----------
+    clf : Classifier
+        Model
+    y : DataFrame/np Array
+    X : DataFrame/np Array
+    top_n : int
+    Returns
+    -------
+    None
+    """
+
+    from sklearn.metrics import confusion_matrix,roc_auc_score
+    y_score = clf.predict_proba(X)[:,1]
+    cutoff = round(y_score[np.argsort(y_score)[-top_n:-top_n+1]][0],2)
+    tn,fp,fn,tp= confusion_matrix(y,np.where(y_score>=cutoff,1,0)).flatten()
+    print(clf.__class__)
+    print()
+    print("n={:^7}   |   top_n={:^7}| rec_cutoff={:.2f}".format(tp+tn+fp+fn,top_n,cutoff))
+    print("            |     Prediction")
+    print("____________|____0__________1___       ")
+    print("            |   TN     |    FP                TNR/Spec\t\t"+ "Ratio of FP/TP = {:.2f}".format(fp/tp))
+    print("        0   | {:^7}  | {:^7}    {:^7}   {:^7}%\t\t".format(tn, fp, tn+fp,round(tn/(tn+fp)*100, 2))+"Prevelance = {:.2f}%".format((fn+tp)/(fn+tp+fp+tn)*100))
+    print("Actual      |__________|_________      \t\t\t\t"+"Accuracy = {:.2f}%".format((tn+tp)/(tn+tp+fn+fp)*100))
+    print("            |   FN     |    TP                TPR/Sen/Recall\t"+"ROC AUC Score = {:.2f}".format(roc_auc_score(y,y_score)))
     print("        1   | {:^7}  | {:^7}   {:^7}   {:^7}%\t\t".format(fn, tp, fn+tp,round(tp/(tp+fn)*100,2))+"Lift = %.2f" % (tp/(tp+fp)/(tp+fn)*(tp+tn+fp+fn)))
     print("            |          |               ")
     print("              {:^7}   {:^7}          ".format(tn+fn, fp+tp))
