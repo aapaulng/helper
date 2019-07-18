@@ -225,7 +225,7 @@ def drop_numerical_50percent_zero(df_num,df_Y):
     return df_num
 
 def outlier3std(df_num):
-    """np.nan the outlier in 3std for numerical variable.
+    """Replace outlier with min and max for numerical variable.
 
     Parameters
     ----------
@@ -240,8 +240,11 @@ def outlier3std(df_num):
     for col in df_num.columns:
         print(col)
         lower_bound, upper_bound = np.percentile(df_num[col],[0.3,99.7])
-        df_num.loc[df_num[col]<lower_bound,col] = np.nan
-        df_num.loc[df_num[col]>upper_bound,col] = np.nan
+#         df_num.loc[df_num[col]<lower_bound,col] = lower_bound
+#         df_num.loc[df_num[col]>upper_bound,col] = upper_bound
+        df_num[col] = np.where(df_num[col]<lower_bound,lower_bound,
+                      np.where(df_num[col]>upper_bound,upper_bound,
+                      df_num[col]))
     return df_num
 
 def medianimpute(df_num):
