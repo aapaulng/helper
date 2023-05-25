@@ -686,3 +686,92 @@ class pyviz:
         plot = hv.HeatMap(num_corr,['x','y'],'value')
         plot = plot.opts(plot={'width': figsize[0] ,'height':figsize[1],'xrotation':90,'tools':['hover'],'colorbar':True})
         return plot
+
+
+def auc_roc_interactive(clf,df_Y,df_X):
+    """Interactive auc roc plot. Remember to use %matplotlib notebook
+
+    Parameters
+    ----------
+    clf : classifier
+    df_Y : Y
+    df_X : X
+
+    """
+
+def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points
+    on the earth (specified in decimal degrees)
+
+    Example: df['distance'] = df.apply(lambda x: haversine(x['longitude_a'],x['latitude_a'],x['longitude_b'],x['latitude_b']),axis=1)
+    """
+    from math import radians, cos, sin, asin, sqrt
+
+    # convert decimal degrees to radians
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    r = 6371 # 3956 Radius of earth in miles. Use 6371 for kilometers
+    return c * r
+
+def prep_polygons_asarr(gs):
+    """
+    A preparation function that convert polygons into arrays of lat & long
+    Example: state_prep = prep_polygons_asarr(state['geometry'].values)
+    """
+    from shapely.geometry import Polygon, MultiPolygon
+
+    def get_pts(poly):
+        if isinstance(poly, Polygon):
+            coords = np.array(poly.exterior.coords)[:,:2]
+        elif isinstance(poly, MultiPolygon):
+            coords = np.concatenate([get_pts(sp) for sp in poly.geoms])
+        return coords
+
+    return [get_pts(poly) for poly in gs]
+
+def get_nearest_poly_w_distance(pt, polys):
+    """
+    For a given point, find the nearest polygon & its distance.
+    Will return n+1 Series (return_col1, return_col2 ... , distance_km).
+    Example:  df[['nearest_index','distance_km']] = df.apply(lambda x: get_nearest_poly(x['geometry'],state_prep),
+                                                             result_type='expand',axis=1)
+    """
+    pt = np.array(pt.coords)
+    dists = np.array([np.abs(np.linalg.norm(poly - pt, axis=1)).min() for poly in polys])
+
+    idx = dists.argmin()
+    harv_min_idx = np.abs(np.linalg.norm(polys[idx] - pt, axis=1)).argmin()
+
+    # Get 2 Points
+    pt = pt[0]
+    pt2 = polys[idx][harv_min_idx]
+
+    harv_dist = haversine(pt[0],pt[1],pt2[0],pt2[1])
+
+    return idx, harv_dist
+
+def get_nearest_poly(df,polygon_gdf,col='geometry',return_col=[]):
+    """
+    For a given point, find the nearest polygon
+    Will return 2 Series (index, distance_km).
+    Example:  df[['nearest_index','distance_km']] = df.apply(lambda x: get_nearest_poly(x['geometry'],territory_prep),
+                                                             result_type='expand',axis=1)
+    """
+    shortest_index = polygon_gdf.distance(df[col]).sort_values().index[0]
+    return polygon_gdf.iloc[shortest_index][return_col]
+
+def to_gpd(df,latitude_col_name,longitude_col_name,epsg='EPSG:4326'):
+    """
+    From df convert to gdf with geometry column.
+    """
+    import geopandas as gpd
+    df_gpd = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df[longitude_col_name], df[latitude_col_name]), crs={'init':epsg})
+    df_gpd = df_gpd.to_crs(epsg)
+
+    return df_gpd
