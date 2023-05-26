@@ -738,8 +738,8 @@ def prep_polygons_asarr(gs):
 def get_nearest_poly_w_distance(pt, polys):
     """
     For a given point, find the nearest polygon & its distance.
-    Will return n+1 Series (return_col1, return_col2 ... , distance_km).
-    Example:  df[['nearest_index','distance_km']] = df.apply(lambda x: get_nearest_poly(x['geometry'],state_prep),
+    Will return 2 Series (index, distance_km).
+    Example:  df[['nearest_index','distance_km']] = df.apply(lambda x: get_nearest_poly_w_distance(x['geometry'],state_prep),
                                                              result_type='expand',axis=1)
     """
     pt = np.array(pt.coords)
@@ -759,8 +759,8 @@ def get_nearest_poly_w_distance(pt, polys):
 def get_nearest_poly(df,polygon_gdf,col='geometry',return_col=[]):
     """
     For a given point, find the nearest polygon
-    Will return 2 Series (index, distance_km).
-    Example:  df[['nearest_index','distance_km']] = df.apply(lambda x: get_nearest_poly(x['geometry'],territory_prep),
+    Will return n+1 Series (return_col1, return_col2 ... , distance_km).
+    Example:  df[['return_col1', 'return_col2', ...,'distance_km']] = df.apply(lambda x: get_nearest_poly(x['geometry'],state_gdf),
                                                              result_type='expand',axis=1)
     """
     shortest_index = polygon_gdf.distance(df[col]).sort_values().index[0]
